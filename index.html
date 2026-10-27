@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Score800 Live Wallpaper</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#f4f9fd;cursor:pointer}
+svg,canvas{position:fixed;inset:0;width:100%;height:100%}
+.w1{animation:fl 9s ease-in-out infinite alternate}
+.w2{animation:fl 11s ease-in-out infinite alternate-reverse}
+@keyframes fl{from{transform:translate(0,0)}to{transform:translate(18px,10px)}}
+#hint{position:fixed;bottom:10px;right:14px;font:12px system-ui,sans-serif;color:#5b7aa8;opacity:.6;transition:opacity 1s}
+</style>
+</head>
+<body>
+<svg id="s" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+<defs>
+<radialGradient id="bg" cx="50%" cy="50%" r="70%"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#eaf5fb"/></radialGradient>
+<linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0a4fc4"/><stop offset=".5" stop-color="#1ab3e6"/><stop offset="1" stop-color="#a6e05a"/></linearGradient>
+<linearGradient id="g2" x1="1" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#0a4fc4"/><stop offset=".5" stop-color="#1fb5d8"/><stop offset="1" stop-color="#c8ec3c"/></linearGradient>
+</defs>
+<rect width="1600" height="900" fill="url(#bg)"/>
+<g opacity=".16">
+<g id="ghost" transform="translate(1500 450)"></g>
+<g fill="#4a8fe0"><rect x="80" y="770" width="40" height="34"/><rect x="138" y="752" width="40" height="52"/><rect x="195" y="728" width="40" height="76"/><rect x="252" y="695" width="40" height="109"/><rect x="310" y="650" width="40" height="154"/></g>
+</g>
+<g class="w1"><path d="M-40 0H640C520 60 400 130 270 190C160 240 60 250 -40 260Z" fill="url(#g1)" opacity=".9"/>
+<path d="M-40 130C120 150 300 60 460 0" stroke="#fff" stroke-width="2" fill="none" opacity=".7"/></g>
+<g class="w2"><path d="M1640 900H820C980 860 1150 800 1300 700C1420 620 1520 590 1640 590Z" fill="url(#g2)" opacity=".9"/>
+<path d="M1000 900C1200 860 1350 740 1640 720" stroke="#fff" stroke-width="2" fill="none" opacity=".7"/></g>
+<g id="seg"></g>
+<path id="track" fill="none" stroke="#d6d6d6" stroke-width="6" stroke-linecap="round"/>
+<g id="needle" transform="translate(800 450) rotate(-180)">
+<polygon points="0,-7 170,-2 170,2 0,9" fill="#0a1fa8"/><circle r="17" fill="#0a1fa8"/><circle cx="-6" cy="4" r="9" fill="#0a1fa8"/>
+</g>
+<g id="letters" font-family="Poppins,'Segoe UI',Arial,sans-serif" font-weight="600" font-size="78" fill="#0a1fa8"></g>
+</svg>
+<canvas id="c"></canvas>
+<div id="hint">Tap to replay · double-tap for fullscreen</div>
+<script>
+const NS="http://www.w3.org/2000/svg",CX=800,CY=450,R1=205,R0=148;
+const cols=["#e8271e","#f47c20","#fbb827","#fdd128","#9bc93d","#3aa84a","#2e9f46"];
+const pt=(r,a)=>[CX+r*Math.cos(a),CY+r*Math.sin(a)];
+function arc(r1,r0,a0,a1){const p=[pt(r1,a0),pt(r1,a1),pt(r0,a1),pt(r0,a0)];
+return `M${p[0]}A${r1} ${r1} 0 0 1 ${p[1]}L${p[2]}A${r0} ${r0} 0 0 0 ${p[3]}Z`}
+const segG=document.getElementById("seg"),segs=[];
+const n=cols.length,gap=0.035,span=Math.PI/n;
+cols.forEach((c,i)=>{const p=document.createElementNS(NS,"path");
+p.setAttribute("d",arc(R1,R0,Math.PI+i*span+gap,Math.PI+(i+1)*span-gap));p.setAttribute("fill",c);
+segG.appendChild(p);segs.push(p)});
+const [ta,tb]=[pt(R0-16,Math.PI+0.12),pt(R0-16,2*Math.PI-0.12)];
+document.getElementById("track").setAttribute("d",`M${ta}A${R0-16} ${R0-16} 0 0 1 ${tb}`);
+// faint ghost gauge
+const gh=document.getElementById("ghost");
+cols.forEach((c,i)=>{const p=document.createElementNS(NS,"path");
+const f=(r,a)=>[r*Math.cos(a),r*Math.sin(a)];const a0=Math.PI+i*span+gap,a1=Math.PI+(i+1)*span-gap,r1=330,r0=250;
+const q=[f(r1,a0),f(r1,a1),f(r0,a1),f(r0,a0)];
+p.setAttribute("d",`M${q[0]}A${r1} ${r1} 0 0 1 ${q[1]}L${q[2]}A${r0} ${r0} 0 0 0 ${q[3]}Z`);p.setAttribute("fill",c);gh.appendChild(p)});
+// letters
+const word="Score800",L=document.getElementById("letters"),probe=document.createElementNS(NS,"text");
+L.appendChild(probe);const xs=[];let total;
+function layout(){xs.length=0;
+ const m=s=>{probe.textContent=s;return s?probe.getComputedTextLength():0};
+ total=m(word);for(let i=0;i<word.length;i++)xs.push(m(word.slice(0,i)));}
+const lt=[];
+function build(){L.innerHTML="";L.appendChild(probe);lt.length=0;layout();
+ const x0=CX-total/2+30,y=560;
+ [...word].forEach((ch,i)=>{const t=document.createElementNS(NS,"text");t.textContent=ch;
+  t.setAttribute("x",x0+xs[i]);t.setAttribute("y",y);t.setAttribute("opacity",0);L.appendChild(t);lt.push({t,x:x0+xs[i],y,w:(xs[i+1]??total)-xs[i]})});}
+build();document.fonts&&document.fonts.ready.then(build);
+// sparkles
+const cv=document.getElementById("c"),cx=cv.getContext("2d");let W,H,sc,ox,oy,dpr;
+function rs(){dpr=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr;
+ sc=Math.max(W/1600,H/900);ox=(W-1600*sc)/2;oy=(H-900*sc)/2}
+rs();addEventListener("resize",rs);
+const sp=[],scol=["#ffc400","#ffffff","#2a6bff","#3ec96a","#ff8a1f"];
+function spawn(x,y,spread=30,big=1){sp.push({x:x+(Math.random()-.5)*spread,y:y+(Math.random()-.5)*spread,
+ vx:(Math.random()-.5)*40,vy:-Math.random()*40,s:(6+Math.random()*12)*big,l:0,d:.8+Math.random()*.9,c:scol[Math.random()*scol.length|0],r:Math.random()*3})}
+function star(x,y,s,c,a,r){cx.save();cx.translate(x,y);cx.rotate(r);cx.globalAlpha=a;cx.shadowColor=c;cx.shadowBlur=s*1.5;
+ cx.fillStyle=c;cx.beginPath();for(let i=0;i<8;i++){const rr=i%2?s*.22:s;const an=i*Math.PI/4;cx.lineTo(Math.cos(an)*rr,Math.sin(an)*rr)}
+ cx.closePath();cx.fill();cx.restore()}
+// timeline
+const T=11.5;let t0=performance.now(),prev=0,shown=[];
+const ease=x=>1-Math.pow(1-x,3),cl=x=>Math.max(0,Math.min(1,x));
+addEventListener("click",()=>{t0=performance.now();document.getElementById("hint").style.opacity=0});
+addEventListener("dblclick",()=>document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen());
+setTimeout(()=>document.getElementById("hint").style.opacity=0,6000);
+const needle=document.getElementById("needle"),prop=(x,y)=>[ox+x*sc,oy+y*sc];
+function frame(now){
+ const t=((now-t0)/1000)%T;
+ if(t<prev){shown=[]}prev=t;
+ segs.forEach((p,i)=>{const k=ease(cl((t-i*.12)/.5));p.setAttribute("opacity",k);
+  p.setAttribute("transform",`translate(${CX} ${CY}) scale(${.9+.1*k}) translate(${-CX} ${-CY})`)});
+ const out=ease(cl((t-9.8)/1.2));
+ let ang;
+ if(t<2.2)ang=-180+155*ease(t/2.2);
+ else if(t<9.8)ang=-25+8*Math.exp(-(t-2.2)*.9)*Math.sin((t-2.2)*6)+3*Math.sin(t*1.7);
+ else ang=-25-155*out;
+ needle.setAttribute("transform",`translate(${CX} ${CY}) rotate(${ang})`);
+ lt.forEach((o,i)=>{const s=1.3+i*.28,k=ease(cl((t-s)/.55))*(1-out);
+  o.t.setAttribute("opacity",k);o.t.setAttribute("transform",`translate(0 ${(1-ease(cl((t-s)/.55)))*26})`);
+  if(t>=s&&!shown[i]){shown[i]=1}});
+ // ambient sparkles
+ if(t>4.0&&t<9.4){if(Math.random()<.09){const o=lt[Math.random()*lt.length|0],up=Math.random()<.5;spawn(...prop(o.x+o.w*Math.random(),o.y-(up?72:-18)),4,.5)}
+  if(Math.random()<.05){const a=Math.PI+Math.random()*Math.PI,r=R1+8+Math.random()*16;spawn(...prop(...pt(r,a)),4,.55)}}
+ cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,W,H);
+ for(let i=sp.length-1;i>=0;i--){const p=sp[i];p.l+=1/60;if(p.l>p.d){sp.splice(i,1);continue}
+  p.x+=p.vx/60;p.y+=p.vy/60;const k=p.l/p.d,a=Math.sin(Math.PI*k);star(p.x,p.y,p.s*sc*(.5+a*.7),p.c,a,p.r+k*2)}
+ requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
